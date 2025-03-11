@@ -1,0 +1,113 @@
+blueprint:
+  name: PV-Powered Automation with Notification
+  description: >
+    Start the dishwasher when PV power output exceeds a threshold or at a fallback time.
+    Sends a notification when the dishwasher's power usage drops below a set threshold for a specified time.
+  domain: automation
+  input:
+    pv_sensor:
+      name: PV Power Sensor
+      description: Select the sensor that tracks PV power output.
+      selector:
+        entity:
+          domain: sensor
+          device_class: power
+    power_threshold:
+      name: PV Power Threshold (W)
+      description: Minimum PV power output required to start the dishwasher.
+      default: 2000
+      selector:
+        number:
+          min: 0
+          max: 10000
+          step: 100
+          unit_of_measurement: W
+    dishwasher_switch:
+      name: Dishwasher Switch
+      description: Select the switch entity for the dishwasher.
+      selector:
+        entity:
+          domain: switch
+    fallback_time:
+      name: Fallback Start Time
+      description: Time at which the dishwasher should start if PV power condition isn't met.
+      selector:
+        time:
+    dishwasher_power_sensor:
+      name: Dishwasher Power Sensor
+      description: Sensor that monitors the dishwasher's power consumption.
+      selector:
+        entity:
+          domain: sensor
+          device_class: power
+    dishwasher_power_threshold:
+      name: Dishwasher Power Threshold (W)
+      description: Power usage below this level indicates the dishwasher has finished.
+      default: 10
+      selector:
+        number:
+          min: 0
+          max: 1000
+          step: 1
+          unit_of_measurement: W
+    power_off_duration:
+      name: Power Off Duration (Minutes)
+      description: Time the dishwasher must stay below the power threshold to trigger the notification.
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 60
+          step: 1
+          unit_of_measurement: min
+    notify_device:
+      name: Notify Device
+      description: Select the device to receive the notification.
+      selector:
+        device:
+          integration: mobile_app
+
+mode: restart
+
+trigger:
+  - platform: numeric_state
+    entity_id: !input pv_sensor
+    above: !input power_threshold
+  - platform: time
+    at: !input fallback_time
+  - platform: numeric_state
+    entity_id: !input dishwasher_power_sensor
+    below: !input dishwasher_power_threshold
+    for:
+      minutes: !input power_off_duration
+
+condition:
+  - condition: or
+    conditions:
+      - condition: numeric_state
+        entity_id: !input pv_sensor
+        above: !input power_threshold
+      - condition: time
+        after: !input fallback_time
+
+action:
+  - choose:
+      - conditions:
+          - condition: numeric_state
+            entity_id: !input dishwasher_power_sensor
+            above: !input dishwasher_power_threshold
+        sequence:
+          - service: switch.turn_on
+            target:
+              entity_id: !input dishwasher_switch
+      - conditions:
+          - condition: numeric_state
+            entity_id: !input dishwasher_power_sensor
+            below: !input dishwasher_power_threshold
+            for:
+              minutes: !input power_off_duration
+        sequence:
+          - service: notify.mobile_app_<YOUR_DEVICE>
+            data:
+              title: "Dishwasher Finished"
+              message: "The dishwasher cycle has completed."
