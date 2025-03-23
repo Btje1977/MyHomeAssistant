@@ -1,8 +1,8 @@
 blueprint:
-  name: PV-Powered Automation with Notification
+  name: PV-Powered Device Automation with Notification
   description: >
-    Start the dishwasher when PV power output exceeds a threshold or at a fallback time.
-    Sends a notification when the dishwasher's power usage drops below a set threshold for a specified time.
+    Start a device when PV power output exceeds a threshold or at a fallback time.
+    Sends a notification when the device's power usage drops below a set threshold for a specified time.
   domain: automation
   input:
     pv_sensor:
@@ -14,7 +14,7 @@ blueprint:
           device_class: power
     power_threshold:
       name: PV Power Threshold (W)
-      description: Minimum PV power output required to start the dishwasher.
+      description: Minimum PV power output required to start the device.
       default: 2000
       selector:
         number:
@@ -22,27 +22,27 @@ blueprint:
           max: 10000
           step: 100
           unit_of_measurement: W
-    dishwasher_switch:
-      name: Dishwasher Switch
-      description: Select the switch entity for the dishwasher.
+    device_switch:
+      name: Device Switch
+      description: Select the switch entity for the device.
       selector:
         entity:
           domain: switch
     fallback_time:
       name: Fallback Start Time
-      description: Time at which the dishwasher should start if PV power condition isn't met.
+      description: Time at which the device should start if PV power condition isn't met.
       selector:
         time:
-    dishwasher_power_sensor:
-      name: Dishwasher Power Sensor
-      description: Sensor that monitors the dishwasher's power consumption.
+    device_power_sensor:
+      name: Device Power Sensor
+      description: Sensor that monitors the device's power consumption.
       selector:
         entity:
           domain: sensor
           device_class: power
-    dishwasher_power_threshold:
-      name: Dishwasher Power Threshold (W)
-      description: Power usage below this level indicates the dishwasher has finished.
+    device_power_threshold:
+      name: Device Power Threshold (W)
+      description: Power usage below this level indicates the device has finished.
       default: 10
       selector:
         number:
@@ -52,7 +52,7 @@ blueprint:
           unit_of_measurement: W
     power_off_duration:
       name: Power Off Duration (Minutes)
-      description: Time the dishwasher must stay below the power threshold to trigger the notification.
+      description: Time the device must stay below the power threshold to trigger the notification.
       default: 5
       selector:
         number:
@@ -76,8 +76,8 @@ trigger:
   - platform: time
     at: !input fallback_time
   - platform: numeric_state
-    entity_id: !input dishwasher_power_sensor
-    below: !input dishwasher_power_threshold
+    entity_id: !input device_power_sensor
+    below: !input device_power_threshold
     for:
       minutes: !input power_off_duration
 
@@ -94,20 +94,20 @@ action:
   - choose:
       - conditions:
           - condition: numeric_state
-            entity_id: !input dishwasher_power_sensor
-            above: !input dishwasher_power_threshold
+            entity_id: !input device_power_sensor
+            above: !input device_power_threshold
         sequence:
           - service: switch.turn_on
             target:
-              entity_id: !input dishwasher_switch
+              entity_id: !input device_switch
       - conditions:
           - condition: numeric_state
-            entity_id: !input dishwasher_power_sensor
-            below: !input dishwasher_power_threshold
+            entity_id: !input device_power_sensor
+            below: !input device_power_threshold
             for:
               minutes: !input power_off_duration
         sequence:
           - service: notify.mobile_app_<YOUR_DEVICE>
             data:
-              title: "Dishwasher Finished"
-              message: "The dishwasher cycle has completed."
+              title: "Device Finished"
+              message: "The device cycle has completed."
