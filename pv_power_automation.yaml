@@ -1,8 +1,8 @@
 blueprint:
-  name: PV-Powered Device Automation with Notifications
+  name: PV-Powered Device Automation with Notification
   description: >
     Start a device when PV power output exceeds a threshold or at a fallback time.
-    Sends a notification when the device starts and when the device's power usage drops below a set threshold for a specified time.
+    Sends a notification when the device's power usage drops below a set threshold for a specified time.
   domain: automation
   input:
     pv_sensor:
@@ -62,7 +62,7 @@ blueprint:
           unit_of_measurement: min
     notify_device:
       name: Notify Device
-      description: Select the device to receive notifications.
+      description: Select the device to receive the notification.
       selector:
         device:
           integration: mobile_app
@@ -100,10 +100,6 @@ action:
           - service: switch.turn_on
             target:
               entity_id: !input device_switch
-          - service: notify.mobile_app_<YOUR_DEVICE>
-            data:
-              title: "Device Started"
-              message: "The device has started successfully."
       - conditions:
           - condition: numeric_state
             entity_id: !input device_power_sensor
