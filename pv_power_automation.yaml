@@ -1,8 +1,8 @@
 blueprint:
-  name: PV-Powered Device Automation with Notification
+  name: PV-Powered Device Automation with Notifications
   description: >
     Start a device when PV power output exceeds a threshold or at a fallback time.
-    Sends a notification when the device's power usage drops below a set threshold for a specified time.
+    Sends a notification when the device starts and when the device's power usage drops below a set threshold for a specified time.
   domain: automation
   input:
     pv_sensor:
@@ -62,7 +62,7 @@ blueprint:
           unit_of_measurement: min
     notify_device:
       name: Notify Device
-      description: Select the device to receive the notification.
+      description: Select the device to receive notifications.
       selector:
         device:
           integration: mobile_app
@@ -75,11 +75,6 @@ trigger:
     above: !input power_threshold
   - platform: time
     at: !input fallback_time
-  - platform: numeric_state
-    entity_id: !input device_power_sensor
-    below: !input device_power_threshold
-    for:
-      minutes: !input power_off_duration
 
 condition:
   - condition: or
@@ -91,23 +86,29 @@ condition:
         after: !input fallback_time
 
 action:
-  - choose:
-      - conditions:
-          - condition: numeric_state
-            entity_id: !input device_power_sensor
-            above: !input device_power_threshold
-        sequence:
-          - service: switch.turn_on
-            target:
-              entity_id: !input device_switch
-      - conditions:
-          - condition: numeric_state
-            entity_id: !input device_power_sensor
-            below: !input device_power_threshold
-            for:
-              minutes: !input power_off_duration
-        sequence:
-          - service: notify.mobile_app_<YOUR_DEVICE>
-            data:
-              title: "Device Finished"
-              message: "The device cycle has completed."
+  - service: switch.turn_on
+    target:
+      entity_id: !input device_switch
+  - service: notify.mobile_app_<YOUR_DEVICE>
+    data:
+      title: "Device Started"
+      message: "The device has started successfully."
+
+  # Wait for power to stay below threshold for set duration
+  - wait_for_trigger:
+      - platform: numeric_state
+        entity_id: !input device_power_sensor
+        below: !input device_power_threshold
+    timeout:
+      minutes: !input power_off_duration
+
+  # Notify when device has finished
+  - if:
+      - condition: numeric_state
+        entity_id: !input device_power_sensor
+        below: !input device_power_threshold
+    then:
+      - service: notify.mobile_app_<YOUR_DEVICE>
+        data:
+          title: "Device Finished"
+          message: "The device cycle has completed."
